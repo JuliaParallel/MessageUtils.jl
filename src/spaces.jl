@@ -5,8 +5,8 @@ type RemoteChannel <: AbstractRemoteSyncObj
     q::Vector
     sz
     so::SyncObjData
-    test_cantake::Function
-    test_canput::Function
+    cantake::Function
+    canput::Function
     fetch::Function
     put::Function
     take::Function
@@ -18,8 +18,8 @@ type RemoteKVSpace <: AbstractRemoteSyncObj
     space::Dict
     sz
     so::SyncObjData
-    test_cantake::Function
-    test_canput::Function
+    cantake::Function
+    canput::Function
     fetch::Function
     put::Function
     take::Function
@@ -31,8 +31,8 @@ type RemoteTSpace <: AbstractRemoteSyncObj
     space::Vector{Tuple}
     sz
     so::SyncObjData
-    test_cantake::Function
-    test_canput::Function
+    cantake::Function
+    canput::Function
     fetch::Function
     put::Function
     take::Function
