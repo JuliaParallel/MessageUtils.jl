@@ -151,9 +151,9 @@ function tsfetch(rv::RemoteTSpace, key; kw...)
 end
 tsfetch(rv::RemoteTSpace; kw...) = nothing
 
-rcquery(rv::RemoteChannel, args...) = (lenq = length(rv.space); println("length of channel : ", lenq); lenq)
-kvsquery(rv::RemoteKVSpace, args...) = (lenq = length(rv.space); println("length of KV space : ", lenq); lenq)
-tsquery(rv::RemoteTSpace, args...) = (lenq = length(rv.space); println("length of T space : ", lenq); lenq)
+rcquery(rv::RemoteChannel, args...) = length(rv.space)
+kvsquery(rv::RemoteKVSpace, args...) = length(rv.space)
+tsquery(rv::RemoteTSpace, args...) = length(rv.space)
 
 length(rr::RemoteRef{RemoteChannel}) = query(rr)
 length(rr::RemoteRef{RemoteKVSpace}) = query(rr)
