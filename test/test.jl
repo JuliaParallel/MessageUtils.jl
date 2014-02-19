@@ -10,7 +10,7 @@ using Base.Test
 # end
 
 c = channel()
-put!(c, 1)
+put!(c, 1; timeout=10.0)
 put!(c, "Hello")
 put!(c, 5.0)
 
@@ -22,6 +22,12 @@ put!(c, 5.0)
 @test fetch(c) == 5.0
 @test take!(c) == 5.0
 @test isready(c) == false
+
+# Channels of a particular type
+c = channel(T=Int)
+@test_throws put!(c, "Hello")
+@test_throws put!(c, 5.0)
+
 
 # same test mixed with another worker...
 c = channel(id_other)

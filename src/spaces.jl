@@ -1,21 +1,40 @@
 export channel, tspace, kvspace
+export RemoteChannel, RemoteKVSpace, RemoteTSpace
+import Base.length
 
+type ValStore
+    v
+    expire::Float64     
+end
 
 type RemoteChannel <: AbstractRemoteSyncObj
-    q::Vector
+    # type specific fields
+    space::Vector{ValStore}
     sz
+    vtype::Type
+    
+    # AbstractRemoteSyncObj required fields
     so::SyncObjData
     cantake::Function
     canput::Function
     fetch::Function
     put::Function
     take::Function
+    query::Function
+    
+    # Housekeeping stuff
+    t::Timer
 
-    RemoteChannel(T, sz) = new(Array(T, 0), sz, SyncObjData(), rccantake, rccanput, rcfetch, rcput, rctake)
+    function RemoteChannel(T, sz) 
+        rc = new(Array(ValStore, 0), sz, T, SyncObjData(), rccantake, rccanput, rcfetch, rcput, rctake, rcquery)
+        rc.t = hk_timer(rc)
+        finalizer(rc, rso_cleanup)
+        rc
+    end
 end
 
 type RemoteKVSpace <: AbstractRemoteSyncObj
-    space::Dict
+    space::Dict{Any, ValStore}
     sz
     so::SyncObjData
     cantake::Function
@@ -23,12 +42,19 @@ type RemoteKVSpace <: AbstractRemoteSyncObj
     fetch::Function
     put::Function
     take::Function
+    query::Function
+    t::Timer
 
-    RemoteKVSpace(sz) = new(Dict(), sz, SyncObjData(), kvscantake, kvscanput, kvsfetch, kvsput, kvstake)
+    function RemoteKVSpace(sz) 
+        kvs = new(Dict{Any, ValStore}(), sz, SyncObjData(), kvscantake, kvscanput, kvsfetch, kvsput, kvstake, kvsquery)
+        kvs.t = hk_timer(kvs)
+        finalizer(kvs, rso_cleanup)
+        kvs
+    end
 end
 
 type RemoteTSpace <: AbstractRemoteSyncObj
-    space::Vector{Tuple}
+    space::Vector{ValStore}
     sz
     so::SyncObjData
     cantake::Function
@@ -36,49 +62,103 @@ type RemoteTSpace <: AbstractRemoteSyncObj
     fetch::Function
     put::Function
     take::Function
+    query::Function
+    t::Timer
 
-    RemoteTSpace(sz) = new(Array(Tuple, 0), sz, SyncObjData(), tscantake, tscanput, tsfetch, tsput, tstake)
+    function RemoteTSpace(sz) 
+        ts = new(Array(ValStore, 0), sz, SyncObjData(), tscantake, tscanput, tsfetch, tsput, tstake, tsquery)
+        ts.t = hk_timer(ts)
+        finalizer(ts, rso_cleanup)
+        ts
+    end
 end
 
+typealias SyncObjectTypes Union(RemoteChannel, RemoteKVSpace, RemoteTSpace)
 
+function hk_timer(rso::SyncObjectTypes)
+    t = Timer((t, status) -> housekeeping(rso))
+    start_timer(t, 15.0, 15.0)
+    t
+end
 
-rccantake(rv::RemoteChannel) = (length(rv.q) > 0)
-rccanput(rv::RemoteChannel, args...) = (length(rv.q) < rv.sz)
+function housekeeping(ts::SyncObjectTypes)
+#    println("Timer called for type ", typeof(ts), " oid ", object_id(ts))
+    tnow = time()
+    filter!(x -> (tnow < x.expire), ts.space)
+end
+
+function rso_cleanup(rso::SyncObjectTypes)
+    stop_timer(rso.t)   # Otherwise, it won't get gc'ed!
+end
+
+rccantake(rv::RemoteChannel) = (length(rv.space) > 0)
+rccanput(rv::RemoteChannel, args...) = (length(rv.space) < rv.sz)
 
 kvscantake(rv::RemoteKVSpace, key) = haskey(rv.space, key)
 kvscanput(rv::RemoteKVSpace, args...) = (length(rv.space) < rv.sz)
 
-tscantake(rv::RemoteTSpace, key) = key in [x[1] for x in rv.space]
+tscantake(rv::RemoteTSpace, key) = key in [x.v[1] for x in rv.space]
 function tscantake(rv::RemoteTSpace, r::Regex)
     for x in rv.space
-        k = x[1]
+        k = x.v[1]
         if testmatch(r, k)
             return true
         end
     end
     return false
 end
+
+testmatch(r::Any, k) = (r == k)
 testmatch(r::Regex, k) = false
 testmatch(r::Regex, k::String) = ismatch(r, k)
 
 tscanput(rv::RemoteTSpace, args...) = (length(rv.space) < rv.sz)
 
-rcput(rv::RemoteChannel, val) = push!(rv.q, val)
-kvsput(rv::RemoteKVSpace, key, val) = (rv.space[key] = val)
-tsput(rv::RemoteTSpace, val::Tuple) = push!(rv.space, val)
+function expire_at(kw) 
+    for (k,v) in kw
+        if (k == :expire) && (v > 0.0)
+            return time() + v
+        end
+    end
+    return time() + 3.15569e9   # 100 years from now
+end
 
-rctake(rv::RemoteChannel) = shift!(rv.q)
-kvstake(rv::RemoteKVSpace, key) = (val = rv.space[key]; delete!(rv.space, key); val)
-tstake(rv::RemoteTSpace, key) = (idx = findfirst(x->x==key, {t[1] for t in rv.space}); splice!(rv.space, idx))
-tstake(rv::RemoteTSpace, r::Regex) = (idx = findfirst(x->testmatch(r,x), {t[1] for t in rv.space}); splice!(rv.space, idx))
+function rcput(rv::RemoteChannel, val; kw...) 
+    if !isa(val, rv.vtype) 
+        error("This channel only supports values of type " * string(rv.vtype))
+    end
+    push!(rv.space, ValStore(val, expire_at(kw)))
+end
+
+kvsput(rv::RemoteKVSpace, key, val; kw...) = (rv.space[key] = ValStore(val, expire_at(kw)))
+tsput(rv::RemoteTSpace, val::Tuple; kw...) = push!(rv.space, ValStore(val, expire_at(kw)))
+
+rctake(rv::RemoteChannel; kw...) = (vs = shift!(rv.space); vs.v)
+kvstake(rv::RemoteKVSpace, key; kw...) = (vs = rv.space[key]; delete!(rv.space, key); vs.v)
+function tstake(rv::RemoteTSpace, key; kw...) 
+    idx = findfirst(x->testmatch(key,x), {t.v[1] for t in rv.space})
+    vs=splice!(rv.space, idx)
+    vs.v
+end
 
 
-rcfetch(rv::RemoteChannel) = rv.q[1]
-kvsfetch(rv::RemoteKVSpace, key) = rv.space[key] 
-kvsfetch(rv::RemoteKVSpace) = nothing
-tsfetch(rv::RemoteTSpace, key) = (idx = findfirst(x->x==key, {t[1] for t in rv.space}); rv.space[idx])
-tsfetch(rv::RemoteTSpace, r::Regex) = (idx = findfirst(x->testmatch(r,x), {t[1] for t in rv.space}); rv.space[idx])
-tsfetch(rv::RemoteTSpace) = nothing
+rcfetch(rv::RemoteChannel; kw...) = rv.space[1].v
+kvsfetch(rv::RemoteKVSpace, key; kw...) = rv.space[key].v 
+kvsfetch(rv::RemoteKVSpace; kw...) = nothing
+function tsfetch(rv::RemoteTSpace, key; kw...) 
+    idx = findfirst(x->testmatch(key,x), {t.v[1] for t in rv.space})
+    rv.space[idx].v
+end
+tsfetch(rv::RemoteTSpace; kw...) = nothing
+
+rcquery(rv::RemoteChannel, args...) = (lenq = length(rv.space); println("length of channel : ", lenq); lenq)
+kvsquery(rv::RemoteKVSpace, args...) = (lenq = length(rv.space); println("length of KV space : ", lenq); lenq)
+tsquery(rv::RemoteTSpace, args...) = (lenq = length(rv.space); println("length of T space : ", lenq); lenq)
+
+length(rr::RemoteRef{RemoteChannel}) = query(rr)
+length(rr::RemoteRef{RemoteKVSpace}) = query(rr)
+length(rr::RemoteRef{RemoteTSpace}) = query(rr)
+
 
 
 # Exports
