@@ -1,0 +1,31 @@
+if nprocs() < 2
+    addprocs(1)
+    using MUtils
+end
+
+
+function foo()
+    while true
+        m = recv()
+#        println("recd : ", m)
+        send((:response, m))
+    end
+end
+
+ct = ctask(foo)
+
+(1,2,3) |> ct
+(1,3) |> ct
+
+remotecall_fetch(2, ct -> recv(ct), ct)
+recv(ct)
+
+ctn = ctask(foo; name="testct")
+
+("Hello", ) |> "testct"
+("World", 1, 2) |> "testct"
+
+remotecall_fetch(2, ()->recv("testct"))
+recv("testct")
+
+    

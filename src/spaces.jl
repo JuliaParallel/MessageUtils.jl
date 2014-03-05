@@ -81,10 +81,32 @@ function hk_timer(rso::SyncObjectTypes)
     t
 end
 
-function housekeeping(ts::SyncObjectTypes)
+function housekeeping(ts::Union(RemoteChannel, RemoteTSpace))
+    try 
+        tnow = time()
+        filter!(x -> (tnow < x.expire), ts.space)
+    catch
+        warn("Error in housekeeping function")
+    end
+end
+
+function housekeeping(ts::RemoteKVSpace)
 #    println("Timer called for type ", typeof(ts), " oid ", object_id(ts))
-    tnow = time()
-    filter!(x -> (tnow < x.expire), ts.space)
+    try 
+        tnow = time()
+        dlist = Array(Any, 0)
+        for (k, v) in ts.space
+            if v.expire < tnow
+                push!(dlist, k)
+            end
+        end
+        
+        for k in dlist
+            delete!(ts.space, k)
+        end
+    catch
+        warn("Error in housekeeping function")
+    end
 end
 
 function rso_cleanup(rso::SyncObjectTypes)
@@ -92,10 +114,10 @@ function rso_cleanup(rso::SyncObjectTypes)
 end
 
 rccantake(rv::RemoteChannel) = (length(rv.space) > 0)
-rccanput(rv::RemoteChannel, args...) = (length(rv.space) < rv.sz)
+rccanput(rv::RemoteChannel, args...) = (rv.sz < 0) || (length(rv.space) < rv.sz)
 
 kvscantake(rv::RemoteKVSpace, key) = haskey(rv.space, key)
-kvscanput(rv::RemoteKVSpace, args...) = (length(rv.space) < rv.sz)
+kvscanput(rv::RemoteKVSpace, args...) = (rv.sz < 0) || (length(rv.space) < rv.sz)
 
 tscantake(rv::RemoteTSpace, key) = key in [x.v[1] for x in rv.space]
 function tscantake(rv::RemoteTSpace, r::Regex)
@@ -112,7 +134,7 @@ testmatch(r::Any, k) = (r == k)
 testmatch(r::Regex, k) = false
 testmatch(r::Regex, k::String) = ismatch(r, k)
 
-tscanput(rv::RemoteTSpace, args...) = (length(rv.space) < rv.sz)
+tscanput(rv::RemoteTSpace, args...) = (rv.sz < 0) || (length(rv.space) < rv.sz)
 
 function expire_at(kw) 
     for (k,v) in kw
@@ -155,15 +177,13 @@ rcquery(rv::RemoteChannel, args...) = length(rv.space)
 kvsquery(rv::RemoteKVSpace, args...) = length(rv.space)
 tsquery(rv::RemoteTSpace, args...) = length(rv.space)
 
-length(rr::RemoteRef{RemoteChannel}) = query(rr)
-length(rr::RemoteRef{RemoteKVSpace}) = query(rr)
-length(rr::RemoteRef{RemoteTSpace}) = query(rr)
+length(rr::SyncObjRef) = query(rr)
 
 
 
 # Exports
-tspace(pid=myid(); sz=1000) = syncobj_create(pid, SyncObjects.RemoteTSpace, sz)
-kvspace(pid=myid(); sz=1000) = syncobj_create(pid, SyncObjects.RemoteKVSpace, sz)
-channel(pid=myid(); T=Any, sz=1000) = syncobj_create(pid, SyncObjects.RemoteChannel, T, sz)
+tspace(pid=myid(); sz=1000) = syncobj_create(pid, MUtils.RemoteTSpace, sz)
+kvspace(pid=myid(); sz=1000) = syncobj_create(pid, MUtils.RemoteKVSpace, sz)
+channel(pid=myid(); T=Any, sz=1000) = syncobj_create(pid, MUtils.RemoteChannel, T, sz)
 
 

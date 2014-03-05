@@ -1,9 +1,11 @@
-np = 8
-nt = 96
+np = 4
+nt = 500
 
-pids = addprocs(np)
-
-using SyncObjects
+if nworkers() < np
+    addprocs(np - nworkers())
+    @everywhere using MUtils
+end
+pids = workers()
 
 ts = tspace()
 
@@ -15,14 +17,13 @@ ts = tspace()
         else
             key = r".*"
         end
-#        key = r".*"
         
         while true
             r = take!(ts, key)
-            lsecs = rand()
-#            lsecs = 1.0
+#            lsecs = rand()
+            lsecs = 0.1
             t1 = time()
-            while (time() - t1) < lsecs
+            while (time() - t1) < 0.1
                 # empty loop simulating CPU intensive code
             end
             
@@ -43,7 +44,7 @@ tic()
             rr = RemoteRef()
             put!(ts, ("$((i%(np))+2)", rr))
             result = take!(rr)
-#             println(result)
+#            println(result)
 #             println("jobs left to be taken : $(length(ts))")
         end
     end
