@@ -1,4 +1,4 @@
-module MUtils
+module MessageUtils
 
 import Base.fetch, Base.put!, Base.take!, Base.isready, Base.wait
 
@@ -19,7 +19,7 @@ function dnsref()
         if (myid() == 1)
             dns.h = kvspace(;sz=-1)
         else
-            dns.h = remotecall_fetch(1, ()->MUtils.dnsref()) 
+            dns.h = remotecall_fetch(1, ()->MessageUtils.dnsref()) 
         end
     end
     return dns.h

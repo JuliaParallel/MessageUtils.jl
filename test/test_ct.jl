@@ -1,6 +1,6 @@
 if nprocs() < 2
     addprocs(1)
-    using MUtils
+    using MessageUtils
 end
 
 

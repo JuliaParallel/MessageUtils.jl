@@ -182,8 +182,8 @@ length(rr::SyncObjRef) = query(rr)
 
 
 # Exports
-tspace(pid=myid(); sz=1000) = syncobj_create(pid, MUtils.RemoteTSpace, sz)
-kvspace(pid=myid(); sz=1000) = syncobj_create(pid, MUtils.RemoteKVSpace, sz)
-channel(pid=myid(); T=Any, sz=1000) = syncobj_create(pid, MUtils.RemoteChannel, T, sz)
+tspace(pid=myid(); sz=1000) = syncobj_create(pid, MessageUtils.RemoteTSpace, sz)
+kvspace(pid=myid(); sz=1000) = syncobj_create(pid, MessageUtils.RemoteKVSpace, sz)
+channel(pid=myid(); T=Any, sz=1000) = syncobj_create(pid, MessageUtils.RemoteChannel, T, sz)
 
 

@@ -1,7 +1,7 @@
 id_me = myid()
 id_other = addprocs(1)[1]
 
-using MUtils
+using MessageUtils
 using Base.Test
 
 macro dbgtest(ex) 

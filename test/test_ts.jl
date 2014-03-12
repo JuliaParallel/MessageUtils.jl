@@ -3,7 +3,7 @@ nt = 500
 
 if nworkers() < np
     addprocs(np - nworkers())
-    @everywhere using MUtils
+    @everywhere using MessageUtils
 end
 pids = workers()
 

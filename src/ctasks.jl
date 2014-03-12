@@ -9,9 +9,9 @@ type CTask
     CTask(name) = new(name, channel(), channel(), RemoteRef())
 end
 
-register_ct(name::String, ct::CTask) = put!(MUtils.dnsref(), (:ctask, name), ct)
-deregister_ct(name::String) = take!(MUtils.dnsref(), (:ctask, name))
-fetch_ct(name::String; timeout=0.001) = fetch(MUtils.dnsref(), (:ctask, name); timeout=timeout)
+register_ct(name::String, ct::CTask) = put!(MessageUtils.dnsref(), (:ctask, name), ct)
+deregister_ct(name::String) = take!(MessageUtils.dnsref(), (:ctask, name))
+fetch_ct(name::String; timeout=0.001) = fetch(MessageUtils.dnsref(), (:ctask, name); timeout=timeout)
 
 # Should only be executed on the node where the task is expected to be started
 function ctwrap(ct, f)
