@@ -41,7 +41,7 @@ end
 
 function setup_waittimer(condvar, timeout)
     t1 = time()
-    t = Timer((x,y) -> notify(condvar))
+    t = Timer(x -> notify(condvar))
     start_timer(t, timeout, 0.0)
     (t1, t)
 end

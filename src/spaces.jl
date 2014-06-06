@@ -76,7 +76,7 @@ end
 typealias SyncObjectTypes Union(RemoteChannel, RemoteKVSpace, RemoteTSpace)
 
 function hk_timer(rso::SyncObjectTypes)
-    t = Timer((t, status) -> housekeeping(rso))
+    t = Timer(t -> housekeeping(rso))
     start_timer(t, 15.0, 15.0)
     t
 end

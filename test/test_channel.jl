@@ -22,8 +22,8 @@ put!(c, 5.0)
 
 # Channels of a particular type
 c = channel(T=Int)
-@test_throws put!(c, "Hello")
-@test_throws put!(c, 5.0)
+@test_throws ErrorException put!(c, "Hello")
+@test_throws ErrorException put!(c, 5.0)
 
 
 # same test mixed with another worker...
