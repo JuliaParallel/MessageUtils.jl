@@ -76,8 +76,12 @@ end
 typealias SyncObjectTypes Union(RemoteChannel, RemoteKVSpace, RemoteTSpace)
 
 function hk_timer(rso::SyncObjectTypes)
-    t = Timer(t -> housekeeping(rso))
-    start_timer(t, 15.0, 15.0)
+    if isv4
+        t = Timer(t -> housekeeping(rso), 15.0, 15.0)
+    else
+        t = Timer(t -> housekeeping(rso))
+        start_timer(t, 15.0, 15.0)
+    end
     t
 end
 
@@ -110,7 +114,11 @@ function housekeeping(ts::RemoteKVSpace)
 end
 
 function rso_cleanup(rso::SyncObjectTypes)
-    stop_timer(rso.t)   # Otherwise, it won't get gc'ed!
+    if isv4
+        close(rso.t)
+    else
+        stop_timer(rso.t)   # Otherwise, it won't get gc'ed!
+    end
 end
 
 rccantake(rv::RemoteChannel) = (length(rv.space) > 0)
@@ -158,7 +166,7 @@ tsput(rv::RemoteTSpace, val::Tuple; kw...) = push!(rv.space, ValStore(val, expir
 rctake(rv::RemoteChannel; kw...) = (vs = shift!(rv.space); vs.v)
 kvstake(rv::RemoteKVSpace, key; kw...) = (vs = rv.space[key]; delete!(rv.space, key); vs.v)
 function tstake(rv::RemoteTSpace, key; kw...) 
-    idx = findfirst(x->testmatch(key,x), {t.v[1] for t in rv.space})
+    idx = findfirst(x->testmatch(key,x), Any[t.v[1] for t in rv.space])
     vs=splice!(rv.space, idx)
     vs.v
 end
@@ -168,7 +176,7 @@ rcfetch(rv::RemoteChannel; kw...) = rv.space[1].v
 kvsfetch(rv::RemoteKVSpace, key; kw...) = rv.space[key].v 
 kvsfetch(rv::RemoteKVSpace; kw...) = nothing
 function tsfetch(rv::RemoteTSpace, key; kw...) 
-    idx = findfirst(x->testmatch(key,x), {t.v[1] for t in rv.space})
+    idx = findfirst(x->testmatch(key,x), Any[t.v[1] for t in rv.space])
     rv.space[idx].v
 end
 tsfetch(rv::RemoteTSpace; kw...) = nothing

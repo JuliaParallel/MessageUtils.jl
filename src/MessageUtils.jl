@@ -12,6 +12,7 @@ type DNSHandle
 end
 
 const dns = DNSHandle()
+const isv4 = !isless(Base.VERSION, v"0.4.0-")
 
 # Globally available dictionary
 function dnsref()
