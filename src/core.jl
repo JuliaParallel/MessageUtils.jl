@@ -41,8 +41,12 @@ end
 
 function setup_waittimer(condvar, timeout)
     t1 = time()
-    t = Timer(x -> notify(condvar))
-    start_timer(t, timeout, 0.0)
+    if isv4
+        t = Timer(x -> notify(condvar), timeout, 0.0)
+    else
+        t = Timer(x -> notify(condvar))
+        start_timer(t, timeout, 0.0)
+    end
     (t1, t)
 end
 
@@ -67,7 +71,11 @@ function wait_cantake (rv::AbstractRemoteSyncObj, args...; kw...)
             wait( rv.so.cantake )
         end
     finally
-        (t != nothing) && stop_timer(t)
+        if isv4
+            (t != nothing) && close(t)
+        else
+            (t != nothing) && stop_timer(t)
+        end
     end
     return ( rv.fetch(rv, args...) )
 end
@@ -83,7 +91,11 @@ function wait_canput(rv::AbstractRemoteSyncObj, args...; kw...)
             wait(rv.so.canput)
         end
     finally
-        (t != nothing) && stop_timer(t)
+        if isv4
+            (t != nothing) && close(t)
+        else
+            (t != nothing) && stop_timer(t)
+        end
     end
     return nothing
 end
