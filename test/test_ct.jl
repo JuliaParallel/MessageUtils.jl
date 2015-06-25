@@ -6,9 +6,9 @@ end
 
 function foo()
     while true
-        m = recv()
+        m = take!()
 #        println("recd : ", m)
-        send((:response, m))
+        put!((:response, m))
     end
 end
 
@@ -17,15 +17,14 @@ ct = ctask(foo)
 (1,2,3) |> ct
 (1,3) |> ct
 
-remotecall_fetch(2, ct -> recv(ct), ct)
-recv(ct)
+remotecall_fetch(2, ct -> take!(ct), ct)
+take!(ct)
 
 ctn = ctask(foo; name="testct")
 
 ("Hello", ) |> "testct"
 ("World", 1, 2) |> "testct"
 
-remotecall_fetch(2, ()->recv("testct"))
-recv("testct")
+remotecall_fetch(2, ()->take!("testct"))
+take!("testct")
 
-    

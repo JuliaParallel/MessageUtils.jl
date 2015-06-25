@@ -1,4 +1,4 @@
-import Base.start, Base.done, Base.next, Base.send, Base.recv
+import Base.start, Base.done, Base.next, Base.put!, Base.take!
 export ctask
 
 type CTask
@@ -18,7 +18,7 @@ function ctwrap(ct, f)
     task_local_storage(:CTASK, ct)
     try
         f()
-    
+
     finally
         if (ct.name != "")
              deregister_ct(ct.name)   # Handle error condition where entry is not found
@@ -56,16 +56,16 @@ next(ct::CTask, state) = take!(ct.inq)
 ctask_self() = task_local_storage(:CTASK)
 
 # Sending a message to a task
-(|>)(msg::Tuple, ctname::String) = send(ctname, msg)
-(|>)(msg::Tuple, ct::CTask) = send(ct, msg)
+(|>)(msg::Tuple, ctname::String) = put!(ctname, msg)
+(|>)(msg::Tuple, ct::CTask) = put!(ct, msg)
 
-send(msg::Tuple; timeout=0.0) = (put!(ctask_self().outq, msg; timeout=timeout); nothing)
-send(ct::CTask, msg::Tuple; timeout=0.0) = (put!(ct.inq, msg; timeout=timeout); nothing)
-send(ctname::String, msg::Tuple; timeout=0.0) = send(fetch_ct(ctname), msg; timeout=timeout)
+put!(msg::Tuple; timeout=0.0) = (put!(ctask_self().outq, msg; timeout=timeout); nothing)
+put!(ct::CTask, msg::Tuple; timeout=0.0) = (put!(ct.inq, msg; timeout=timeout); nothing)
+put!(ctname::String, msg::Tuple; timeout=0.0) = put!(fetch_ct(ctname), msg; timeout=timeout)
 
 
 # Pulling a message from a task
-recv(; timeout=0.0) = take!(ctask_self().inq; timeout=timeout) 
-recv(ct::CTask; timeout=0.0) = take!(ct.outq; timeout=timeout)
-recv(ctname::String; timeout=0.0) = recv(fetch_ct(ctname); timeout=timeout)
+take!(; timeout=0.0) = take!(ctask_self().inq; timeout=timeout)
+take!(ct::CTask; timeout=0.0) = take!(ct.outq; timeout=timeout)
+take!(ctname::String; timeout=0.0) = take!(fetch_ct(ctname); timeout=timeout)
 
