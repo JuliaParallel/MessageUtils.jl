@@ -87,11 +87,11 @@ messages.
 
 The following functions can be used to send/recv messages from these channels.
 
-`put!msg::Tuple)` appends a message to a tasks outbound channel
+`put!(msg::Tuple)` appends a message to a tasks outbound channel
 
-`put!ct::CTask, msg::Tuple)` appends a message to task `ct`'s inbound channel
+`put!(ct::CTask, msg::Tuple)` appends a message to task `ct`'s inbound channel
 
-`put!ctname::String, msg::Tuple)` appends a message to task addressed by `ctname`'s inbound channel
+`put!(ctname::String, msg::Tuple)` appends a message to task addressed by `ctname`'s inbound channel
 
 `take!()` pops a message from the current tasks inbound channel
 
