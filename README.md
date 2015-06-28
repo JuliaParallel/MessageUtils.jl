@@ -1,5 +1,5 @@
-MUtils
-======
+MessageUtils
+============
 
 A collection of utilities for messaging
 
@@ -103,8 +103,9 @@ The pipelining operator `|>` can be used to send a message to a task. For exampl
 
 `(:test_msg, "Hello") |> ct` will add the tuple `(:test_msg, "Hello")` to `ct`'s inbound channel
 
-`send`, `recv` both accept an optional `keyword` argument `timeout` which specifies
+`put!`, `take!` both accept an optional `keyword` argument `timeout` which specifies
 the maximum number of seconds to block. If the request cannot be fulfilled within the requested
 time a `MUtilTimeOutEx` exception is thrown.
 
-
+Note: The Julia 0.3 compatible version has `send`/`recv` in place of `put!`/`take`. 
+This has been renamed in 0.4 for consistency.  
